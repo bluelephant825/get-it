@@ -19,6 +19,11 @@ import { APP_VERSION } from "@/lib/version";
 export type SettingsPayload = {
   autoGenerate: boolean;
   maxRetries: number;
+  provider: "codex" | "pi";
+  piUrl?: string;
+  piApiKey?: string;
+  piModelFast?: string;
+  piModelSmart?: string;
 };
 
 export const SETTINGS_EVENT = "getit:settings";
@@ -144,6 +149,31 @@ function SettingsPanel({ refreshKey }: { refreshKey: string }) {
     [persist],
   );
 
+  const [provider, setProvider] = useState<"codex" | "pi">("codex");
+  const [piUrl, setPiUrl] = useState<string>("http://localhost:11434/v1");
+  const [piApiKey, setPiApiKey] = useState<string>("");
+  const [piModelFast, setPiModelFast] = useState<string>("llama3.2");
+  const [piModelSmart, setPiModelSmart] = useState<string>("llama3.2");
+
+  useEffect(() => {
+    if (refreshKey !== "open") return;
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((s: any) => {
+        if (cancelled) return;
+        if (s.provider) setProvider(s.provider);
+        if (typeof s.piUrl === "string") setPiUrl(s.piUrl);
+        if (typeof s.piApiKey === "string") setPiApiKey(s.piApiKey);
+        if (typeof s.piModelFast === "string") setPiModelFast(s.piModelFast);
+        if (typeof s.piModelSmart === "string") setPiModelSmart(s.piModelSmart);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
   return (
     <>
       <div className="border-b border-[var(--border-subtle)] px-3 py-2">
@@ -162,6 +192,97 @@ function SettingsPanel({ refreshKey }: { refreshKey: string }) {
           Saved automatically. Your choice survives app restarts.
         </p>
       </div>
+
+      <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
+        <p className="text-[12.5px] font-medium text-[var(--ink-900)] mb-2">Model Engine</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={`flex-1 rounded-md px-3 py-1.5 text-[11.5px] font-medium transition-colors ${
+              provider === "codex"
+                ? "bg-[var(--accent-500)] text-white"
+                : "bg-[var(--surface-sunken)] text-[var(--ink-600)] hover:bg-[var(--surface-sunken-hover)]"
+            }`}
+            onClick={() => {
+              setProvider("codex");
+              persist({ provider: "codex" });
+            }}
+          >
+            Codex (Managed)
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded-md px-3 py-1.5 text-[11.5px] font-medium transition-colors ${
+              provider === "pi"
+                ? "bg-[var(--accent-500)] text-white"
+                : "bg-[var(--surface-sunken)] text-[var(--ink-600)] hover:bg-[var(--surface-sunken-hover)]"
+            }`}
+            onClick={() => {
+              setProvider("pi");
+              persist({ provider: "pi" });
+            }}
+          >
+            Pi Coder (BYOK)
+          </button>
+        </div>
+      </div>
+
+      {provider === "pi" && (
+        <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--surface-sunken)] space-y-3">
+          <div>
+            <label className="block text-[11.5px] font-medium text-[var(--ink-900)] mb-1">
+              API Base URL
+            </label>
+            <input
+              type="text"
+              value={piUrl}
+              onChange={(e) => setPiUrl(e.target.value)}
+              onBlur={() => persist({ piUrl })}
+              placeholder="http://localhost:11434/v1"
+              className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-[12px] font-mono text-[var(--ink-900)] focus:border-[var(--accent-500)] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11.5px] font-medium text-[var(--ink-900)] mb-1">
+              API Key
+            </label>
+            <input
+              type="password"
+              value={piApiKey}
+              onChange={(e) => setPiApiKey(e.target.value)}
+              onBlur={() => persist({ piApiKey })}
+              placeholder="Leave empty for Ollama"
+              className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-[12px] font-mono text-[var(--ink-900)] focus:border-[var(--accent-500)] focus:outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[11.5px] font-medium text-[var(--ink-900)] mb-1">
+                Fast Model
+              </label>
+              <input
+                type="text"
+                value={piModelFast}
+                onChange={(e) => setPiModelFast(e.target.value)}
+                onBlur={() => persist({ piModelFast })}
+                className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-[12px] font-mono text-[var(--ink-900)] focus:border-[var(--accent-500)] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11.5px] font-medium text-[var(--ink-900)] mb-1">
+                Smart Model
+              </label>
+              <input
+                type="text"
+                value={piModelSmart}
+                onChange={(e) => setPiModelSmart(e.target.value)}
+                onBlur={() => persist({ piModelSmart })}
+                className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-[12px] font-mono text-[var(--ink-900)] focus:border-[var(--accent-500)] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auto-generate toggle */}
       <div className="flex items-start gap-2.5 px-3 py-2.5">

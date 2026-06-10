@@ -31,6 +31,14 @@ export async function POST(req: Request) {
       typeof b.maxRetries === "number" && b.maxRetries >= 0
         ? b.maxRetries
         : current.maxRetries,
+    provider:
+      b.provider === "codex" || b.provider === "pi" ? b.provider : current.provider,
+    piUrl: typeof b.piUrl === "string" ? b.piUrl : current.piUrl,
+    piApiKey: typeof b.piApiKey === "string" ? b.piApiKey : current.piApiKey,
+    piModelFast:
+      typeof b.piModelFast === "string" ? b.piModelFast : current.piModelFast,
+    piModelSmart:
+      typeof b.piModelSmart === "string" ? b.piModelSmart : current.piModelSmart,
   };
   saveSettings(next);
   return NextResponse.json(next);

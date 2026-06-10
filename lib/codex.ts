@@ -20,6 +20,8 @@ import type { ThreadOptions } from "@openai/codex-sdk";
 import { CODEX_SCRATCH_DIR } from "./paths";
 import { CodexError, classifyCodexError } from "./codex-errors";
 import type { CodexErrorKind } from "./codex-errors";
+import { loadSettings } from "./settings-store";
+import { runJsonPi, runJsonInThreadPi } from "./pi-coder";
 
 // Pure error model + presentation live in codex-errors.ts (no SDK dependency,
 // so they're unit-testable). Re-export them here so callers keep importing
@@ -198,6 +200,11 @@ export async function runJson<T>(
   outputSchema: object,
   opts: RunOptions = {},
 ): Promise<{ data: T; usage: unknown }> {
+  const settings = loadSettings();
+  if (settings.provider === "pi") {
+    return runJsonPi<T>(prompt, outputSchema, opts);
+  }
+
   // Short-circuit: if we know we're inside a rate-limit window, fail fast
   // without burning another Codex call.
   const preflight = preflightHealth();
@@ -255,6 +262,11 @@ export async function runJsonInThread<T>(args: {
   resume?: { threadId: string; input: string };
   start?: { input: string };
 }): Promise<{ data: T; usage: unknown; threadId: string | null }> {
+  const settings = loadSettings();
+  if (settings.provider === "pi") {
+    return runJsonInThreadPi<T>(args);
+  }
+
   const preflight = preflightHealth();
   if (preflight) throw preflight;
   const opts = args.opts ?? {};
